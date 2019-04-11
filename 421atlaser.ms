@@ -55,7 +55,8 @@ macroScript four2oneAtlaser
 		global maxObjects = 4
 			global canWeGo = false
 			global arr_Detected = #(false, false, false, false)
-
+			
+			global arr_OrgObject = #(undefined, undefined, undefined, undefined)
 			global arr_WorkObject = #(undefined, undefined, undefined, undefined)
 			global arr_WorkTexture = #(undefined, undefined, undefined, undefined)
 			global arr_WorkTextureFilename = #(undefined, undefined, undefined, undefined)
@@ -89,7 +90,7 @@ macroScript four2oneAtlaser
 							
 												)			
 						
-		rollout roll_421atlaser "four2one Atlaser 0.1" width:420 height:820
+		rollout roll_421atlaser "four2one Atlaser 0.4" width:420 height:820
 		(
 		button btn_extractSelection "Extract Selection" width:240 height:30 pos:[40,20]
 		
@@ -142,7 +143,7 @@ macroScript four2oneAtlaser
 		label lbl_textureSelected "Currently looking for:" align:#left pos:[300, 260]
 		edittext edt_currentPatter "" text:"$objectname_COL" width:120 pos:[290, 280]
 		
-		checkbox cbx_makeCopy "Work on copies" checked:true tooltip:"Will work on copies of current models." pos:[300,355]		
+		checkbox cbx_makeCopy "Work on copies" checked:false tooltip:"Will work on copies of current models." pos:[300,355]		
 		
 		button btn_makeMesh "Make Mesh" enabled:false width:120 height:30 pos:[40,430,5]
 		button btn_makeTex "Make Texture" enabled:false  width:120 height:30 pos:[160,430,5]
@@ -180,6 +181,55 @@ macroScript four2oneAtlaser
 			return false
 		)
 		
+		fn fn_backupOriginalMeshes =
+		(
+			tempArraySelection = (selection as array)
+						print tempArraySelection as string
+			--print "given array: " + arr_orgObj as string
+			--objCount = 1
+			--objCountTwo = 1
+			arr_result = #(undefined,undefined,undefined,undefined)
+-- 			for o in tempArraySelection do 
+-- 			(
+-- 				maxOps.cloneNodes tempArraySelection[objCount] offset:[0,0,0] cloneType:#copy actualNodeList:#() newNodes:&result
+-- 				objCount += 1	
+-- 			)
+			arr_result = for myobj in (selection as array) collect (copy myobj )
+			print "result array" + result as string
+			for m = 1 to arr_result.count do
+			(
+				tempObject = arr_result[m]
+				print "temp object: " + tempObject as string
+				tempObject.name = (arr_result[m].name as string + "_bkp")
+				labelDebugText = ("Mesh" + m as string+" copied as: " + tempObject.name as string )
+				print ("Mesh" +m as string+" copied as: " + tempObject.name as string )
+				hide tempObject
+				--objCountTwo += 1
+				
+				
+				)
+		)	
+		
+		fn fn_makeTexture firstTex secondTex thirdTex fourthTex =
+		(
+			bitmapRes = arr_bitmapX[1] + arr_bitmapX[2]
+			firstMap = openBitmap firstTex
+			secondMap = openBitmap secondTex
+			thirdMap = openBitmap thirdTex
+			fourthMap = openBitmap fourthTex
+			
+			--display firstMap caption:"firstmap"
+			finalMap = bitmap bitmapRes bitmapRes color:red
+			pastebitmap firstMap finalMap [0,0] [0,0]
+			pastebitmap secondMap finalMap [0,0] [arr_bitmapX[2],0]
+			pastebitmap thirdMap finalMap [0,0] [0,arr_bitmapY[1]]
+			pastebitmap fourthMap finalMap [0,0] [arr_bitmapX[1],arr_bitmapY[1]]
+			
+			display finalMap caption:"composedMap"
+
+			)
+		
+		
 		fn fn_editUV obj corner =
 		(
 			select  (execute ("$'"+ obj.name + "'"))
@@ -195,7 +245,7 @@ macroScript four2oneAtlaser
             --    uv_modifier.unwrap.setMapChannel aUVChannel
            --     uv_modifier.unwrap.reset()
            --     forcecompleteredraw dodisabled:true -- Hacky fix for a bug, see http://www.polycount.com/forum/showthread.php?t=97059
-            --)
+        
 				uv_modifier.unwrap2.selectFaces allfaces
 			scaleFactor = 0.5
 				uv_modifier.unwrap2.ScaleSelectedXY scaleFactor scaleFactor [0,0,0]
@@ -231,8 +281,8 @@ macroScript four2oneAtlaser
 		)
 		
 			
-					on btn_makeMesh pressed do
-		(
+		on btn_makeMesh pressed do
+		(			
 			labelDebugText = ""
 			for i=1 to maxObjects do
 			(
@@ -240,9 +290,14 @@ macroScript four2oneAtlaser
 			 fn_editUV arr_WorkObject[i] i
 
 			)
+		)
+		
+		on btn_makeTex pressed do
+		(			
+			labelDebugText = ""
+			fn_makeTexture arr_WorkTextureFilename[1] arr_WorkTextureFilename[2] arr_WorkTextureFilename[3] arr_WorkTextureFilename[4]
 			
-			)
-			
+		)
 			
 		
 		fn fn_getTriangleCount obj =
@@ -306,7 +361,7 @@ macroScript four2oneAtlaser
 				
 				)
 				
-				fn fn_calculateNewMeshTex =
+		fn fn_calculateNewMeshTex =
 				(
 					totalTri = 0
 					totalVert = 0
@@ -346,9 +401,18 @@ macroScript four2oneAtlaser
 			if (selection.count == maxObjects) then
 			(
 				labelDebugText =""
+									if (cbx_makeCopy.checked = true) then
+					(
+						
+						fn_backupOriginalMeshes()
+						
+						) 
 				for i=1 to maxObjects do
 				(
-				arr_WorkObject[i] = selection[i]
+
+							arr_WorkObject[i] = selection[i]
+											
+							
 				--labelDebugText	 += arr_WorkObject[i].name + "\n" 
 					--print labelDebugText	
 									fn_getTexture arr_WorkObject[i] i
@@ -405,11 +469,11 @@ macroScript four2oneAtlaser
 		
 			
 			
-			valUp = valUp+1
-				if valUp == 1 then ( label6.text = ("|")) else
-				if valUp == 2 then ( label6.text = ("/")) else
-				if valUp == 3 then ( label6.text = ("-")) else
-				if valUp == 4 then ( label6.text = ("\\")) else
+			--valUp = valUp+1
+			--	if valUp == 1 then ( label6.text = ("|")) else
+			--	if valUp == 2 then ( label6.text = ("/")) else
+			--	if valUp == 3 then ( label6.text = ("-")) else
+			--	if valUp == 4 then ( label6.text = ("\\")) else
 -- 				if valUp == 5 then ( label6.text = ("+")) else
 -- 				if valUp == 6 then ( label6.text = (".....")) else
 -- 				if valUp == 7 then ( label6.text = ("......")) else
@@ -420,14 +484,14 @@ macroScript four2oneAtlaser
 -- 				if valUp == 12 then ( label6.text = ("...........")) else
 -- 				if valUp == 13 then ( label6.text = ("............")) else
 -- 				if valUp == 14 then ( label6.text = (".............")) else
-				if valUp >= 4 then (valUp = 1
+			--	if valUp >= 4 then (valUp = 1
 					--label6.text = ("|")
 					)
 
 				)
 		
 		
-	)
+	
 
 
 	createdialog roll_421atlaser
